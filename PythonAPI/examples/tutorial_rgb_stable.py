@@ -18,8 +18,8 @@ import logging
 import random
 
 def saveImg(image):
-    from IPython.terminal import embed
-    ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+    # from IPython.terminal import embed
+    # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
     image.save_to_disk('/home/mikura/Github/carla/tutorial/output/%.6d.jpg' % image.frame)
 
 
