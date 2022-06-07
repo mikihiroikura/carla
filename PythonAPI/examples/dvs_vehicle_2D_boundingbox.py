@@ -4,6 +4,7 @@ import random
 import queue
 import numpy
 import cv2
+import argparse
 
 # Class id
 car = ['vehicle.audi.a2', 'vehicle.audi.etron', 'vehicle.audi.tt', 'vehicle.bmw.grandtourer', 'vehicle.chevrolet.impala',
@@ -64,8 +65,8 @@ def transformEvent2Img(eventArray):
             pixel_id = pixel_id + 1
     return eventImg
 
-def main():
-    client = carla.Client('localhost', 2000)
+def main(args):
+    client = carla.Client(args.host, args.port)
     world = client.get_world()
     bp_lib = world.get_blueprint_library()
 
@@ -159,45 +160,68 @@ def main():
         cv2.line(img, (int(detectionArea[3][0]),int(detectionArea[3][1])), (int(detectionArea[2][0]),int(detectionArea[2][1])), (0,0,255), 1)
         cv2.line(img, (int(detectionArea[2][0]),int(detectionArea[2][1])), (int(detectionArea[0][0]),int(detectionArea[0][1])), (0,0,255), 1)
 
-
-
-        # Save images
-
+        # Save event images
+        if args.savedataset:
+            dvspath = args.path + 'output/%06d.png' % dvs_events.frame
+            cv2.imwrite(dvspath, dvs_img)
 
         # Create and open label txt file
-        for npc in world.get_actors().filter('*vehicle*'):
-            # from IPython.terminal import embed
-            # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
-            bb = npc.bounding_box
-            bb_location = npc.get_transform().location
-            if bb_location.x > xrange[0] and bb_location.x < xrange[1] and bb_location.y > yrange[0] and bb_location.y < yrange[1]:
-                verts = [v for v in bb.get_world_vertices(npc.get_transform())]
-                x_max = -10000
-                x_min = 10000
-                y_max = -10000
-                y_min = 10000
+        labelpath = args.path + 'labels/%06d.txt' % image.frame
+        with open(labelpath, 'w') as f:
 
-                for vert in verts:
-                    p = get_image_point(vert, K, world_2_dvs)
-                    # Find the rightmost vertex
-                    if p[0] > x_max:
-                        x_max = p[0]
-                    # Find the leftmost vertex
-                    if p[0] < x_min:
-                        x_min = p[0]
-                    # Find the highest vertex
-                    if p[1] > y_max:
-                        y_max = p[1]
-                    # Find the lowest  vertex
-                    if p[1] < y_min:
-                        y_min = p[1]
+            for npc in world.get_actors().filter('*vehicle*'):
+                # from IPython.terminal import embed
+                # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+                bb = npc.bounding_box
+                bb_location = npc.get_transform().location
+                if bb_location.x > xrange[0] and bb_location.x < xrange[1] and bb_location.y > yrange[0] and bb_location.y < yrange[1]:
+                    verts = [v for v in bb.get_world_vertices(npc.get_transform())]
+                    x_max = -10000
+                    x_min = 10000
+                    y_max = -10000
+                    y_min = 10000
 
-                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
+                    for vert in verts:
+                        p = get_image_point(vert, K, world_2_dvs)
+                        # Find the rightmost vertex
+                        if p[0] > x_max:
+                            x_max = p[0]
+                        # Find the leftmost vertex
+                        if p[0] < x_min:
+                            x_min = p[0]
+                        # Find the highest vertex
+                        if p[1] > y_max:
+                            y_max = p[1]
+                        # Find the lowest  vertex
+                        if p[1] < y_min:
+                            y_min = p[1]
 
+                    cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,255,0, 255), 1)
+                    cv2.line(dvs_img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
+                    cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,255,0, 255), 1)
+                    cv2.line(dvs_img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
 
+                    # Write label data
+                    label_id = -1
+                    if npc.type_id in car:
+                        label_id = 0
+                    elif npc.type_id in truck:
+                        label_id = 1
+                    elif npc.type_id in motorbicycle:
+                        label_id = 2
+                    elif npc.type_id in bicycle:
+                        label_id = 3
+                    if label_id == -1:
+                        continue
+                    center_x_percetage = (x_min + x_max) / 2.0 / img.shape[1]
+                    center_y_percetage = (y_min + y_max) / 2.0 / img.shape[0]
+                    width_percetage = (x_max - x_min) / img.shape[1]
+                    height_percetage = (y_max - y_min) / img.shape[0]
+                    label_result = '%01d %.6f %.6f %.6f %.6f' % (label_id, center_x_percetage, center_y_percetage, width_percetage, height_percetage)
+                    print(label_result)
+                    f.write(label_result + '\n')
+
+        f.close()
 
         # Show event frames
         display_imgs = numpy.concatenate((img, dvs_img), axis=1)
@@ -217,8 +241,34 @@ def main():
         npc.destroy()
 
 if __name__ == "__main__":
+    argparser = argparse.ArgumentParser(
+        description=__doc__)
+    argparser.add_argument(
+        '--host',
+        metavar='H',
+        default='localhost',
+        help='IP of the host server (default: localhost)')
+    argparser.add_argument(
+        '-p', '--port',
+        metavar='P',
+        default=2000,
+        type=int,
+        help='TCP port to listen to (default: 2000)')
+    argparser.add_argument(
+        '--path',
+        default='/home/mikura/Github/carla/tutorial/',
+        help='Path for saving dataset (imgs and labels)'
+    )
+    argparser.add_argument(
+        '--savedataset',
+        default=False,
+        action='store_true',
+        help='Flag for save dataset'
+    )
+    args = argparser.parse_args()
+
     try:
-        main()
+        main(args)
     except KeyboardInterrupt:
         pass
     finally:
