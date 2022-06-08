@@ -197,10 +197,7 @@ def main(args):
                     if p[1] < y_min:
                         y_min = p[1]
 
-                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,255,0, 255), 1)
-                cv2.line(dvs_img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
+                cv2.rectangle(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
 
                 # Check whether events are in bounding box
                 xevents = numpy.array(dvs_events.to_array_x())
