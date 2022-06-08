@@ -1,4 +1,4 @@
-from http import client
+from copy import deepcopy
 import carla
 import random
 import queue
@@ -66,6 +66,9 @@ def transformEvent2Img(eventArray):
     return eventImg
 
 def main(args):
+    ################
+    # Setup
+    ################
     client = carla.Client(args.host, args.port)
     world = client.get_world()
     bp_lib = world.get_blueprint_library()
@@ -140,13 +143,15 @@ def main(args):
     # from IPython.terminal import embed
     # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
 
-
+    ################
     # Loop
+    ################
     while True:
         # Retrieve and convert events to img
         world.tick()
         dvs_events = dvs_queue.get()
         dvs_img = transformEvent2Img(dvs_events)
+        dvs_img_saved = deepcopy(dvs_img)
 
         # Debug: Retrieve and reshape the rgb image
         image = rgb_queue.get()
@@ -160,74 +165,95 @@ def main(args):
         cv2.line(img, (int(detectionArea[3][0]),int(detectionArea[3][1])), (int(detectionArea[2][0]),int(detectionArea[2][1])), (0,0,255), 1)
         cv2.line(img, (int(detectionArea[2][0]),int(detectionArea[2][1])), (int(detectionArea[0][0]),int(detectionArea[0][1])), (0,0,255), 1)
 
-        # Save event images
-        if args.savedataset:
-            dvspath = args.path + 'output/%06d.png' % dvs_events.frame
-            cv2.imwrite(dvspath, dvs_img)
-
-        # Create and open label txt file
-        labelpath = args.path + 'labels/%06d.txt' % image.frame
-        with open(labelpath, 'w') as f:
-
-            for npc in world.get_actors().filter('*vehicle*'):
+        ################
+        # Create label text
+        ################
+        label_results = ''
+        for npc in world.get_actors().filter('*vehicle*'):
+            bb = npc.bounding_box
+            bb_location = npc.get_transform().location
+            if bb_location.x > xrange[0] and bb_location.x < xrange[1] and bb_location.y > yrange[0] and bb_location.y < yrange[1]:
                 # from IPython.terminal import embed
                 # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
-                bb = npc.bounding_box
-                bb_location = npc.get_transform().location
-                if bb_location.x > xrange[0] and bb_location.x < xrange[1] and bb_location.y > yrange[0] and bb_location.y < yrange[1]:
-                    verts = [v for v in bb.get_world_vertices(npc.get_transform())]
-                    x_max = -10000
-                    x_min = 10000
-                    y_max = -10000
-                    y_min = 10000
 
-                    for vert in verts:
-                        p = get_image_point(vert, K, world_2_dvs)
-                        # Find the rightmost vertex
-                        if p[0] > x_max:
-                            x_max = p[0]
-                        # Find the leftmost vertex
-                        if p[0] < x_min:
-                            x_min = p[0]
-                        # Find the highest vertex
-                        if p[1] > y_max:
-                            y_max = p[1]
-                        # Find the lowest  vertex
-                        if p[1] < y_min:
-                            y_min = p[1]
+                verts = [v for v in bb.get_world_vertices(npc.get_transform())]
+                x_max = -10000
+                x_min = 10000
+                y_max = -10000
+                y_min = 10000
 
-                    cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,255,0, 255), 1)
-                    cv2.line(dvs_img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
-                    cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,255,0, 255), 1)
-                    cv2.line(dvs_img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
+                for vert in verts:
+                    p = get_image_point(vert, K, world_2_dvs)
+                    # Find the rightmost vertex
+                    if p[0] > x_max:
+                        x_max = p[0]
+                    # Find the leftmost vertex
+                    if p[0] < x_min:
+                        x_min = p[0]
+                    # Find the highest vertex
+                    if p[1] > y_max:
+                        y_max = p[1]
+                    # Find the lowest  vertex
+                    if p[1] < y_min:
+                        y_min = p[1]
 
-                    # Write label data
-                    label_id = -1
-                    if npc.type_id in car:
-                        label_id = 0
-                    elif npc.type_id in truck:
-                        label_id = 1
-                    elif npc.type_id in motorbicycle:
-                        label_id = 2
-                    elif npc.type_id in bicycle:
-                        label_id = 3
-                    if label_id == -1:
-                        continue
-                    center_x_percetage = (x_min + x_max) / 2.0 / img.shape[1]
-                    center_y_percetage = (y_min + y_max) / 2.0 / img.shape[0]
-                    width_percetage = (x_max - x_min) / img.shape[1]
-                    height_percetage = (y_max - y_min) / img.shape[0]
-                    label_result = '%01d %.6f %.6f %.6f %.6f' % (label_id, center_x_percetage, center_y_percetage, width_percetage, height_percetage)
-                    print(label_result)
-                    f.write(label_result + '\n')
+                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_max),int(y_min)), (0,255,0, 255), 1)
+                cv2.line(dvs_img, (int(x_min),int(y_max)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
+                cv2.line(dvs_img, (int(x_min),int(y_min)), (int(x_min),int(y_max)), (0,255,0, 255), 1)
+                cv2.line(dvs_img, (int(x_max),int(y_min)), (int(x_max),int(y_max)), (0,255,0, 255), 1)
 
-        f.close()
+                # Check whether events are in bounding box
+                xevents = numpy.array(dvs_events.to_array_x())
+                yevents = numpy.array(dvs_events.to_array_y())
+                eventsInBB = (xevents < x_max) * (xevents > x_min) * (yevents < y_max) * (yevents > y_min)
+                if numpy.any(eventsInBB) is False:
+                    continue
 
+                # Write label data
+                label_id = -1
+                if npc.type_id in car:
+                    label_id = 0
+                elif npc.type_id in truck:
+                    label_id = 1
+                elif npc.type_id in motorbicycle:
+                    label_id = 2
+                elif npc.type_id in bicycle:
+                    label_id = 3
+                if label_id == -1:
+                    continue
+                center_x_percetage = (x_min + x_max) / 2.0 / img.shape[1]
+                center_y_percetage = (y_min + y_max) / 2.0 / img.shape[0]
+                width_percetage = (x_max - x_min) / img.shape[1]
+                height_percetage = (y_max - y_min) / img.shape[0]
+                label_result = '%01d %.6f %.6f %.6f %.6f' % (label_id, center_x_percetage, center_y_percetage, width_percetage, height_percetage)
+                print(label_result)
+                label_results += label_result + '\n'
+
+        ################
         # Show event frames
+        ################
         display_imgs = numpy.concatenate((img, dvs_img), axis=1)
         cv2.imshow('Left (RGB) and Right (DVS) frames', display_imgs)
         if cv2.waitKey(1) == ord('q'):
             break
+
+        ################
+        # Save dataset
+        ################
+        if args.savedataset and len(label_results) > 0:
+            # Event images
+            dvspath = args.path + 'output/%06d.png' % dvs_events.frame
+            cv2.imwrite(dvspath, dvs_img_saved)
+
+            # Label
+            labelpath = args.path + 'labels/%06d.txt' % dvs_events.frame
+            with open(labelpath, 'w') as f:
+                f.write(label_results)
+            f.close()
+
+    ################
+    # Loop end process
+    ################
     cv2.destroyAllWindows()
 
     # Destroy actors
