@@ -242,6 +242,16 @@ def main(args):
             dvspath = args.path + 'output/%06d.png' % dvs_events.frame
             cv2.imwrite(dvspath, dvs_img_saved)
 
+            # Raw event stream
+            if args.eventstream:
+                eventpath = args.path + 'events/%06d.txt' % dvs_events.frame
+                x_events = dvs_events.to_array_x()
+                y_events = dvs_events.to_array_y()
+                t_events = dvs_events.to_array_t()
+                p_events = dvs_events.to_array_pol()
+                events = numpy.array([t_events, x_events, y_events, p_events]).transpose()
+                numpy.savetxt(eventpath, events)
+
             # Label
             labelpath = args.path + 'labels/%06d.txt' % dvs_events.frame
             with open(labelpath, 'w') as f:
@@ -286,7 +296,13 @@ if __name__ == "__main__":
         '--savedataset',
         default=False,
         action='store_true',
-        help='Flag for save dataset'
+        help='Flag for saving dataset'
+    )
+    argparser.add_argument(
+        '--eventstream',
+        default=False,
+        action='store_true',
+        help='Flag for saving raw event stream'
     )
     args = argparser.parse_args()
 
