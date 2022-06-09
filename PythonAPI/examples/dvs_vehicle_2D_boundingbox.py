@@ -70,16 +70,22 @@ def main(args):
     # Setup
     ################
     client = carla.Client(args.host, args.port)
+    client.set_timeout(10.0)
     world = client.get_world()
     bp_lib = world.get_blueprint_library()
+
+    # Set dvs and rgb camera positions
+    cam_posinit = [2.5, 0, 6, 0, 0, 0]
+    if args.campos is not None:
+        cam_posinit = args.campos
 
     # Spawn dvs camera
     dvs_bp = bp_lib.find('sensor.camera.dvs')
     dvs_bp.set_attribute("image_size_x", str(640))
     dvs_bp.set_attribute("image_size_y", str(480))
     dvs_bp.set_attribute("fov", str(105))
-    dvs_location = carla.Location(2.5, 0, 6)
-    dvs_rotation = carla.Rotation(0, 0, 0)
+    dvs_location = carla.Location(cam_posinit[0], cam_posinit[1], cam_posinit[2])
+    dvs_rotation = carla.Rotation(cam_posinit[3], cam_posinit[4], cam_posinit[5])
     dvs_transform = carla.Transform(dvs_location, dvs_rotation)
     stable_dvs = world.spawn_actor(dvs_bp, dvs_transform)
 
@@ -88,8 +94,8 @@ def main(args):
     rgb_bp.set_attribute("image_size_x", str(640))
     rgb_bp.set_attribute("image_size_y", str(480))
     rgb_bp.set_attribute("fov", str(105))
-    rgb_location = carla.Location(2.5, 0, 6)
-    rgb_rotation = carla.Rotation(0, 0, 0)
+    rgb_location = carla.Location(cam_posinit[0], cam_posinit[1], cam_posinit[2])
+    rgb_rotation = carla.Rotation(cam_posinit[3], cam_posinit[4], cam_posinit[5])
     rgb_transform = carla.Transform(rgb_location, rgb_rotation)
     stable_rgb = world.spawn_actor(rgb_bp, rgb_transform)
 
@@ -303,6 +309,12 @@ if __name__ == "__main__":
         default=False,
         action='store_true',
         help='Flag for saving raw event stream'
+    )
+    argparser.add_argument(
+        '--campos',
+        nargs='+',
+        type=float,
+        help='Set dvs camera position (x, y, z[m], roll. pitch, yaw[deg])'
     )
     args = argparser.parse_args()
 

@@ -37,6 +37,12 @@ def main():
         default=2000,
         type=int,
         help='TCP port to listen to (default: 2000)')
+    argparser.add_argument(
+        '--campos',
+        nargs='+',
+        type=float,
+        help='Set camera position (x, y, z[m], roll. pitch, yaw[deg])'
+    )
     args = argparser.parse_args()
 
     logging.basicConfig(format='%(levelname)s: %(message)s', level=logging.INFO)
@@ -84,13 +90,18 @@ def main():
         # --------------
         # Add a RGB camera sensor to stable points. 
         # --------------
+        # Set rgb camera positions
+        cam_posinit = [2.5, 0, 6, 0, 0, 0]
+        if args.campos is not None:
+            cam_posinit = args.campos
+
         cam_bp = None
         cam_bp = world.get_blueprint_library().find('sensor.camera.rgb')
         cam_bp.set_attribute("image_size_x",str(1920))
         cam_bp.set_attribute("image_size_y",str(1080))
         cam_bp.set_attribute("fov",str(105))
-        cam_location = carla.Location(2,0,6)
-        cam_rotation = carla.Rotation(0,0,0)
+        cam_location = carla.Location(cam_posinit[0], cam_posinit[1], cam_posinit[2])
+        cam_rotation = carla.Rotation(cam_posinit[3], cam_posinit[4], cam_posinit[5])
         cam_transform = carla.Transform(cam_location,cam_rotation)
         ego_cam = world.spawn_actor(cam_bp,cam_transform)
         ego_cam.listen(lambda image: saveImg(image))
