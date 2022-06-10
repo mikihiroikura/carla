@@ -176,7 +176,7 @@ def main(args):
         cv2.line(img, (int(detectionArea[2][0]),int(detectionArea[2][1])), (int(detectionArea[0][0]),int(detectionArea[0][1])), (0,0,255), 1)
 
         ###############
-        # Spawn vehicles randomly
+        # Spawn vehicles
         ###############
         if dvs_events.frame % 200 == 0:
             # from IPython.terminal import embed
@@ -337,6 +337,7 @@ if __name__ == "__main__":
         '--campos',
         nargs='+',
         type=float,
+        default=[-166.166229, 1912.735474, 498.677490, -19.44432, 103.046799, 1.0], # providentia++ camera default position
         help='Set dvs camera position (x, y, z[m], pitch, yaw, roll[deg])'
     )
     args = argparser.parse_args()
