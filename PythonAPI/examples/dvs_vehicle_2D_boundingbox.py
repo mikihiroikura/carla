@@ -22,6 +22,10 @@ bicycle = ['vehicle.bh.crossbike', 'vehicle.diamondback.century', 'vehicle.gazel
 xrange = [10.0, 25.0]
 yrange = [-4.0, 4.0]
 
+# Spawn position
+spawn_position_candidate = [[-166, 1873, 488], [-162, 1874, 488], [-158, 1875, 488],
+                            [-155, 1875.5, 488], [-151, 1876.5, 488]]
+
 def build_projection_matrix(w, h, fov):
     focal = w / (2.0 * numpy.tan(fov * numpy.pi / 360.0))
     K = numpy.identity(3)
@@ -128,12 +132,12 @@ def main(args):
     edges = [[0,1], [1,3], [3,2], [2,0], [0,4], [4,5], [5,1], [5,7], [7,6], [6,4], [6,2], [7,3]]
 
     # Add other vehicles
-    spawn_points = world.get_map().get_spawn_points()
-    for i in range(50):
-        vehicle_bp = random.choice(bp_lib.filter('vehicle'))
-        npc = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
-        if npc:
-            npc.set_autopilot(True)
+    # spawn_points = world.get_map().get_spawn_points()
+    # for i in range(50):
+    #     vehicle_bp = random.choice(bp_lib.filter('vehicle'))
+    #     npc = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
+    #     if npc:
+    #         npc.set_autopilot(True)
 
     # Place spectator on dvs camera
     spectator = world.get_spectator()
@@ -171,6 +175,20 @@ def main(args):
         cv2.line(img, (int(detectionArea[3][0]),int(detectionArea[3][1])), (int(detectionArea[2][0]),int(detectionArea[2][1])), (0,0,255), 1)
         cv2.line(img, (int(detectionArea[2][0]),int(detectionArea[2][1])), (int(detectionArea[0][0]),int(detectionArea[0][1])), (0,0,255), 1)
 
+        ###############
+        # Spawn vehicles randomly
+        ###############
+        if dvs_events.frame % 200 == 0:
+            # from IPython.terminal import embed
+            # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+
+            vehicle_bp = random.choice(bp_lib.filter('vehicle'))
+            spawn_pos = spawn_position_candidate[(dvs_events.frame // 200) % 5]
+            spawn_transform = carla.Transform(carla.Location(spawn_pos[0], spawn_pos[1], spawn_pos[2]), carla.Rotation(-19.44432, 103.0468, 0))
+            npc = world.try_spawn_actor(vehicle_bp, spawn_transform)
+            if npc:
+                npc.set_autopilot(True)
+        
         ################
         # Create label text
         ################
@@ -237,8 +255,13 @@ def main(args):
         ################
         display_imgs = numpy.concatenate((img, dvs_img), axis=1)
         cv2.imshow('Left (RGB) and Right (DVS) frames', display_imgs)
-        if cv2.waitKey(1) == ord('q'):
+        key = cv2.waitKey(1)
+        if key == ord('q'):
             break
+        elif key == ord('d'):
+            from IPython.terminal import embed
+            ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+
 
         ################
         # Save dataset
@@ -314,7 +337,7 @@ if __name__ == "__main__":
         '--campos',
         nargs='+',
         type=float,
-        help='Set dvs camera position (x, y, z[m], roll. pitch, yaw[deg])'
+        help='Set dvs camera position (x, y, z[m], pitch, yaw, roll[deg])'
     )
     args = argparser.parse_args()
 
