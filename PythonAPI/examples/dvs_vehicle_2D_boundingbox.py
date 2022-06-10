@@ -5,6 +5,7 @@ import queue
 import numpy
 import cv2
 import argparse
+import math
 
 # Class id
 car = ['vehicle.audi.a2', 'vehicle.audi.etron', 'vehicle.audi.tt', 'vehicle.bmw.grandtourer', 'vehicle.chevrolet.impala',
@@ -69,6 +70,25 @@ def transformEvent2Img(eventArray):
             eventImg[i, j, 2] = eventImgList[pixel_id].r
             pixel_id = pixel_id + 1
     return eventImg
+
+# Inside/Outside judgement for point
+# True: Inside, False: Outside
+def WindingNumberAlgorithm(vertices, point):
+    totalAngle = 0
+    for id in range(len(vertices)):
+        vec0 = numpy.array(vertices[(id) % len(vertices)]) - numpy.array(point)
+        vec1 = numpy.array(vertices[(id + 1) % len(vertices)]) - numpy.array(point)
+        absAngle = math.acos(vec0.dot(vec1) / numpy.linalg.norm(vec0) / numpy.linalg.norm(vec1))
+        if numpy.cross(vec0, vec1) >= 0:
+            totalAngle += absAngle
+        else:
+            totalAngle -= absAngle
+        print(totalAngle)
+    if totalAngle < 0.0001:
+        return False
+    else:
+        return True
+
 
 def main(args):
     ################
