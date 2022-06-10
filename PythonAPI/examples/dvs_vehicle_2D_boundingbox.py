@@ -74,6 +74,7 @@ def transformEvent2Img(eventArray):
 
 # Inside/Outside judgement for point
 # True: Inside, False: Outside
+# Left-hand and Right-hand coordinate
 def WindingNumberAlgorithm(vertices, point):
     totalAngle = 0
     for id in range(len(vertices)):
@@ -84,7 +85,7 @@ def WindingNumberAlgorithm(vertices, point):
             totalAngle += absAngle
         else:
             totalAngle -= absAngle
-        print(totalAngle)
+    totalAngle = abs(totalAngle)
     if totalAngle < 0.0001:
         return False
     else:
@@ -223,7 +224,7 @@ def main(args):
         for npc in world.get_actors().filter('*vehicle*'):
             bb = npc.bounding_box
             bb_location = npc.get_transform().location
-            if bb_location.x > xrange[0] and bb_location.x < xrange[1] and bb_location.y > yrange[0] and bb_location.y < yrange[1]:
+            if WindingNumberAlgorithm(detectionArea, [bb_location.x, bb_location.y]):
                 # from IPython.terminal import embed
                 # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
 
