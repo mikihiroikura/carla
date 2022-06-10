@@ -22,6 +22,7 @@ bicycle = ['vehicle.bh.crossbike', 'vehicle.diamondback.century', 'vehicle.gazel
 # Detection area
 xrange = [10.0, 25.0]
 yrange = [-4.0, 4.0]
+detectionArea = [[-183.3, 1920], [-196.3, 1962.6], [-175.9, 1967.4], [-163.8, 1925.4]]
 
 # Spawn position
 spawn_position_candidate = [[-166, 1873, 488], [-162, 1874, 488], [-158, 1875, 488],
@@ -162,12 +163,11 @@ def main(args):
     spectator.set_transform(stable_dvs.get_transform())
 
     # Debug: Write detection area
-    detectionArea = []
-    for xarea in xrange:
-        for yarea in yrange:
-            pos = carla.Location(xarea, yarea, 0.0)
-            p = get_image_point(pos, K, world_2_dvs)
-            detectionArea.append(p)
+    projectedDetectionArea = []
+    for areaVertice in detectionArea:
+        pos = carla.Location(areaVertice[0], areaVertice[1], 487.0)
+        p = get_image_point(pos, K, world_2_dvs)
+        projectedDetectionArea.append(p)
     # from IPython.terminal import embed
     # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
 
@@ -188,10 +188,8 @@ def main(args):
         # from IPython.terminal import embed
         # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
 
-        cv2.line(img, (int(detectionArea[0][0]),int(detectionArea[0][1])), (int(detectionArea[1][0]),int(detectionArea[1][1])), (0,0,255), 1)
-        cv2.line(img, (int(detectionArea[1][0]),int(detectionArea[1][1])), (int(detectionArea[3][0]),int(detectionArea[3][1])), (0,0,255), 1)
-        cv2.line(img, (int(detectionArea[3][0]),int(detectionArea[3][1])), (int(detectionArea[2][0]),int(detectionArea[2][1])), (0,0,255), 1)
-        cv2.line(img, (int(detectionArea[2][0]),int(detectionArea[2][1])), (int(detectionArea[0][0]),int(detectionArea[0][1])), (0,0,255), 1)
+        for i in range(4):
+            cv2.line(img, (int(projectedDetectionArea[(i) % 4][0]),int(projectedDetectionArea[(i) % 4][1])), (int(projectedDetectionArea[(i + 1) % 4][0]),int(projectedDetectionArea[(i + 1) % 4][1])), (0,0,255), 1)
 
         ###############
         # Spawn vehicles
