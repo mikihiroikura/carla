@@ -25,6 +25,7 @@ yrange = [-4.0, 4.0]
 # Spawn position
 spawn_position_candidate = [[-166, 1873, 488], [-162, 1874, 488], [-158, 1875, 488],
                             [-155, 1875.5, 488], [-151, 1876.5, 488]]
+random.seed()   # Initialize random
 
 def build_projection_matrix(w, h, fov):
     focal = w / (2.0 * numpy.tan(fov * numpy.pi / 360.0))
@@ -131,13 +132,10 @@ def main(args):
     # Remember the edge pairs
     edges = [[0,1], [1,3], [3,2], [2,0], [0,4], [4,5], [5,1], [5,7], [7,6], [6,4], [6,2], [7,3]]
 
-    # Add other vehicles
-    # spawn_points = world.get_map().get_spawn_points()
-    # for i in range(50):
-    #     vehicle_bp = random.choice(bp_lib.filter('vehicle'))
-    #     npc = world.try_spawn_actor(vehicle_bp, random.choice(spawn_points))
-    #     if npc:
-    #         npc.set_autopilot(True)
+    # Set parameter for spawining vehicles
+    spawn_deltaseconds = 10.0  # Unit [s]
+    spawn_loopcnt = int(spawn_deltaseconds / settings.fixed_delta_seconds)
+    spawn_posid = 0
 
     # Place spectator on dvs camera
     spectator = world.get_spectator()
@@ -178,12 +176,23 @@ def main(args):
         ###############
         # Spawn vehicles
         ###############
-        if dvs_events.frame % 200 == 0:
-            # from IPython.terminal import embed
-            # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+        # from IPython.terminal import embed
+        # ipshell = embed.InteractiveShellEmbed(config=embed.load_default_config())(local_ns=locals())
+        if dvs_events.frame % spawn_loopcnt == 0:
+            # Randomize spawn position and time
+            if args.randomspawn:
+                spawn_posid_next = random.randint(0, len(spawn_position_candidate) - 1)
+                while spawn_posid == spawn_posid_next:
+                    spawn_posid_next = random.randint(0, len(spawn_position_candidate) - 1)
+                spawn_posid = spawn_posid_next
+                spawn_deltaseconds = float(random.randint(3, 10))
+                spawn_loopcnt = int(spawn_deltaseconds / settings.fixed_delta_seconds)
+            else:
+                spawn_posid = (dvs_events.frame // spawn_loopcnt) % len(spawn_position_candidate)
 
+            # Spawn vehicle
             vehicle_bp = random.choice(bp_lib.filter('vehicle'))
-            spawn_pos = spawn_position_candidate[(dvs_events.frame // 200) % 5]
+            spawn_pos = spawn_position_candidate[spawn_posid]
             spawn_transform = carla.Transform(carla.Location(spawn_pos[0], spawn_pos[1], spawn_pos[2]), carla.Rotation(-19.44432, 103.0468, 0))
             npc = world.try_spawn_actor(vehicle_bp, spawn_transform)
             if npc:
@@ -339,6 +348,12 @@ if __name__ == "__main__":
         type=float,
         default=[-166.166229, 1912.735474, 498.677490, -19.44432, 103.046799, 1.0], # providentia++ camera default position
         help='Set dvs camera position (x, y, z[m], pitch, yaw, roll[deg])'
+    )
+    argparser.add_argument(
+        '--randomspawn',
+        default=False,
+        action='store_true',
+        help='Spawn vehicles randomly (related to time and position)'
     )
     args = argparser.parse_args()
 
